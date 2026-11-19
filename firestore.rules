@@ -1,0 +1,172 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Hardened Global Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Blueprint (Anti-Update-Gap) ---
+    function isValidEncryptedVault(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.vaultUuid is string &&
+             data.vaultUuid.size() >= 1 &&
+             data.vaultUuid.size() <= 64 &&
+             data.schemaVersion is int &&
+             data.schemaVersion == 1 &&
+             data.vaultVersion is int &&
+             data.vaultVersion >= 1 &&
+             data.vaultVersion <= 1000000 &&
+             data.accountCount is int &&
+             data.accountCount >= 0 &&
+             data.accountCount <= 5000 &&
+             data.deviceName is string &&
+             data.deviceName.size() >= 1 &&
+             data.deviceName.size() <= 100 &&
+             data.kdfAlgorithm is string &&
+             data.kdfAlgorithm == 'ARGON2ID' &&
+             data.kdfSalt is string &&
+             data.kdfSalt.size() >= 16 &&
+             data.kdfSalt.size() <= 128 &&
+             data.kdfMemoryKb is int &&
+             data.kdfMemoryKb >= 4096 &&
+             data.kdfMemoryKb <= 262144 &&
+             data.kdfIterations is int &&
+             data.kdfIterations >= 1 &&
+             data.kdfIterations <= 20 &&
+             data.kdfParallelism is int &&
+             data.kdfParallelism >= 1 &&
+             data.kdfParallelism <= 8 &&
+             data.wrappedVaultKey is string &&
+             data.wrappedVaultKey.size() >= 24 &&
+             data.wrappedVaultKey.size() <= 256 &&
+             data.wrappedVaultKeyIv is string &&
+             data.wrappedVaultKeyIv.size() >= 12 &&
+             data.wrappedVaultKeyIv.size() <= 64 &&
+             data.encryptedVault is string &&
+             data.encryptedVault.size() >= 16 &&
+             data.encryptedVault.size() <= 700000 &&
+             data.encryptedVaultIv is string &&
+             data.encryptedVaultIv.size() >= 12 &&
+             data.encryptedVaultIv.size() <= 64 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isVaultSyncAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'vaultVersion',
+        'accountCount',
+        'deviceName',
+        'encryptedVault',
+        'encryptedVaultIv',
+        'updatedAt'
+      ]);
+    }
+
+    function isVaultKeyRotationOrReplaceAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'vaultUuid',
+        'vaultVersion',
+        'accountCount',
+        'deviceName',
+        'kdfAlgorithm',
+        'kdfSalt',
+        'kdfMemoryKb',
+        'kdfIterations',
+        'kdfParallelism',
+        'wrappedVaultKey',
+        'wrappedVaultKeyIv',
+        'encryptedVault',
+        'encryptedVaultIv',
+        'updatedAt'
+      ]);
+    }
+
+    // --- Per-User Zero-Knowledge Encrypted Vault Collection ---
+    match /users/{userId}/vaults/{vaultId} {
+      allow get: if isOwner(userId) && isValidId(vaultId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(vaultId) &&
+                       isValidEncryptedVault(incoming()) &&
+                       incoming().keys().hasAll([
+                         'userId',
+                         'vaultUuid',
+                         'schemaVersion',
+                         'vaultVersion',
+                         'accountCount',
+                         'deviceName',
+                         'kdfAlgorithm',
+                         'kdfSalt',
+                         'kdfMemoryKb',
+                         'kdfIterations',
+                         'kdfParallelism',
+                         'wrappedVaultKey',
+                         'wrappedVaultKeyIv',
+                         'encryptedVault',
+                         'encryptedVaultIv',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'vaultUuid',
+                         'schemaVersion',
+                         'vaultVersion',
+                         'accountCount',
+                         'deviceName',
+                         'kdfAlgorithm',
+                         'kdfSalt',
+                         'kdfMemoryKb',
+                         'kdfIterations',
+                         'kdfParallelism',
+                         'wrappedVaultKey',
+                         'wrappedVaultKeyIv',
+                         'encryptedVault',
+                         'encryptedVaultIv',
+                         'createdAt',
+                         'updatedAt'
+                       ]);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(vaultId) &&
+                       isValidEncryptedVault(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().schemaVersion == existing().schemaVersion &&
+                       (isVaultSyncAction() || isVaultKeyRotationOrReplaceAction());
+
+      allow delete: if isOwner(userId) && isValidId(vaultId);
+    }
+  }
+}

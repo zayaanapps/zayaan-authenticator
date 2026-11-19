@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "EncryptedCloudVault": {
+      "title": "Encrypted Cloud Vault",
+      "description": "Zero-knowledge AES-256-GCM encrypted authenticator vault and Argon2id-wrapped 256-bit vault key owned by a single authenticated user. No plaintext TOTP secrets or recovery passwords are ever stored.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the vault owner (immutable)."
+        },
+        "vaultUuid": {
+          "type": "string",
+          "description": "Unique identifier for the vault encryption lineage used to detect cross-device conflicts."
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "description": "Vault serialization schema version (currently 1)."
+        },
+        "vaultVersion": {
+          "type": "integer",
+          "description": "Monotonically increasing revision counter for safe synchronization and conflict detection."
+        },
+        "accountCount": {
+          "type": "integer",
+          "description": "Number of authenticator accounts encrypted inside the vault payload."
+        },
+        "deviceName": {
+          "type": "string",
+          "description": "Non-sensitive label of the Android device that performed the last backup."
+        },
+        "kdfAlgorithm": {
+          "type": "string",
+          "description": "Key derivation algorithm used to derive the key-wrapping key from the user recovery password.",
+          "enum": ["ARGON2ID"]
+        },
+        "kdfSalt": {
+          "type": "string",
+          "description": "Base64-encoded unique cryptographic salt for Argon2id."
+        },
+        "kdfMemoryKb": {
+          "type": "integer",
+          "description": "Argon2id memory cost parameter in KiB."
+        },
+        "kdfIterations": {
+          "type": "integer",
+          "description": "Argon2id time cost (iterations) parameter."
+        },
+        "kdfParallelism": {
+          "type": "integer",
+          "description": "Argon2id parallelism parameter."
+        },
+        "wrappedVaultKey": {
+          "type": "string",
+          "description": "Base64-encoded AES-256-GCM ciphertext of the random 256-bit vault key wrapped with the Argon2id-derived key."
+        },
+        "wrappedVaultKeyIv": {
+          "type": "string",
+          "description": "Base64-encoded 12-byte GCM initialization vector used to wrap the vault key."
+        },
+        "encryptedVault": {
+          "type": "string",
+          "description": "Base64-encoded AES-256-GCM ciphertext of the serialized authenticator accounts."
+        },
+        "encryptedVaultIv": {
+          "type": "string",
+          "description": "Base64-encoded 12-byte GCM initialization vector used to encrypt the vault payload."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of initial vault backup creation (clients must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of most recent encrypted backup update (clients must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "vaultUuid",
+        "schemaVersion",
+        "vaultVersion",
+        "accountCount",
+        "deviceName",
+        "kdfAlgorithm",
+        "kdfSalt",
+        "kdfMemoryKb",
+        "kdfIterations",
+        "kdfParallelism",
+        "wrappedVaultKey",
+        "wrappedVaultKeyIv",
+        "encryptedVault",
+        "encryptedVaultIv",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/vaults/{vaultId}": {
+      "schema": {
+        "$ref": "#/entities/EncryptedCloudVault"
+      },
+      "description": "Per-user zero-knowledge encrypted authenticator vault storage (primary vault document at vaultId = 'primary')."
+    }
+  }
+}
