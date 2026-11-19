@@ -158,7 +158,7 @@ fun DashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Zayan Authenticator",
+                            text = "Zayaan Authenticator",
                             style = MaterialTheme.typography.titleLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -474,7 +474,7 @@ fun DashboardScreen(
             title = { Text("Delete ${account.displayTitle}?") },
             text = {
                 Text(
-                    "Removing this account deletes its verification code from Zayan Authenticator. Make sure you have disabled 2FA or saved backup codes for this service first."
+                    "Removing this account deletes its verification code from Zayaan Authenticator. Make sure you have disabled 2FA or saved backup codes for this service first."
                 )
             },
             confirmButton = {

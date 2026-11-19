@@ -29,7 +29,7 @@ object BiometricAuthHelper {
 
     fun authenticate(
         activity: FragmentActivity,
-        title: String = "Unlock Zayan Authenticator",
+        title: String = "Unlock Zayaan Authenticator",
         subtitle: String = "Verify your identity to view verification codes",
         negativeButtonText: String = "Use Passcode",
         onSuccess: () -> Unit,

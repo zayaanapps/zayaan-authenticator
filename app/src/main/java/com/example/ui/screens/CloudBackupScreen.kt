@@ -296,7 +296,7 @@ fun CloudBackupScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Zayan Authenticator never silently overwrites an existing cloud vault. Restore it using your recovery password, or explicitly choose Replace.",
+                                text = "Zayaan Authenticator never silently overwrites an existing cloud vault. Restore it using your recovery password, or explicitly choose Replace.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -555,10 +555,10 @@ fun CloudBackupScreen(
                             Text("How Zero-Knowledge Recovery Works", style = MaterialTheme.typography.titleMedium)
                         }
                         Text(
-                            text = "1. Zayan Authenticator generates a random 256-bit vault encryption key on your device.\n" +
+                            text = "1. Zayaan Authenticator generates a random 256-bit vault encryption key on your device.\n" +
                                 "2. Your recovery password derives a key-wrapping key using Argon2id with a unique salt and wraps the 256-bit vault key via AES-256-GCM.\n" +
                                 "3. Only the encrypted vault and wrapped key are uploaded to Firebase Cloud Firestore. Neither Firebase nor Google can read your TOTP secrets.\n" +
-                                "4. To recover on a new device: install Zayan Authenticator, sign in with the same Google account, tap Restore, and enter your recovery password.",
+                                "4. To recover on a new device: install Zayaan Authenticator, sign in with the same Google account, tap Restore, and enter your recovery password.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -96,7 +96,7 @@ fun LockScreen(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.img_vault_shield_1795105196684),
-                        contentDescription = "Zayan Authenticator locked vault shield",
+                        contentDescription = "Zayaan Authenticator locked vault shield",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )

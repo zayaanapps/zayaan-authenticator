@@ -324,7 +324,7 @@ fun QrScannerScreen(
                             text = if (permissionRequested) {
                                 "Camera permission was denied. You can grant it again, import a QR image using Android Photo Picker, or enter your secret key manually."
                             } else {
-                                "Zayan Authenticator uses the camera strictly on-device to decode 2FA QR codes offline."
+                                "Zayaan Authenticator uses the camera strictly on-device to decode 2FA QR codes offline."
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Zayan Authenticator"
+rootProject.name = "Zayaan Authenticator"
 
 include(":app")

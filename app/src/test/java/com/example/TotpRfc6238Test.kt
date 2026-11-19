@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Verifies Zayan Authenticator's TOTP engine against ALL official RFC 6238 Appendix B test vectors
+ * Verifies Zayaan Authenticator's TOTP engine against ALL official RFC 6238 Appendix B test vectors
  * for SHA-1 (20-byte key), SHA-256 (32-byte key), and SHA-512 (64-byte key), plus 6-digit/8-digit,
  * 30s/60s intervals, and Base32 validation.
  */

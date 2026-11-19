@@ -1,5 +1,5 @@
 {
-  "name": "Zayan Authenticator",
+  "name": "Zayaan Authenticator",
   "description": "Secure offline-first TOTP authenticator with AES-256-GCM local encryption, Android Keystore, biometric/PIN lock, and zero-knowledge Argon2id encrypted Firebase cloud backup and multi-device sync.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
