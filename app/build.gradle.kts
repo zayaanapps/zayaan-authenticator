@@ -68,6 +68,25 @@ android {
     includeInApk = false
     includeInBundle = true
   }
+  packaging {
+    resources {
+      excludes += setOf(
+        "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+        "META-INF/BC*.DSA",
+        "META-INF/BC*.SF",
+        "META-INF/BC*.RSA",
+        "META-INF/DEPENDENCIES",
+        "META-INF/LICENSE",
+        "META-INF/LICENSE.txt",
+        "META-INF/LICENSE.md",
+        "META-INF/LICENSE-notice.md",
+        "META-INF/NOTICE",
+        "META-INF/NOTICE.txt",
+        "META-INF/AL2.0",
+        "META-INF/LGPL2.1"
+      )
+    }
+  }
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files

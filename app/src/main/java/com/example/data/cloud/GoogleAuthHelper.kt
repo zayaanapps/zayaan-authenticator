@@ -8,6 +8,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.NoCredentialException
 import com.example.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -88,6 +89,8 @@ object GoogleAuthHelper {
                 } else {
                     onUnauthenticated()
                 }
+            } catch (_: NoCredentialException) {
+                onUnauthenticated()
             } catch (_: Exception) {
                 onUnauthenticated()
             }
@@ -130,6 +133,9 @@ object GoogleAuthHelper {
             } catch (e: GetCredentialCancellationException) {
                 Log.w(TAG, "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
                 onAuthCancelled()
+            } catch (e: NoCredentialException) {
+                Log.w(TAG, "No Google credentials available on device: ${e.message}")
+                onAuthError("No Google account found on this device. Please sign in to a Google account in Android Settings and try again.")
             } catch (e: Exception) {
                 Log.e(TAG, "Google Sign-In failed", e)
                 onAuthError(e.localizedMessage ?: "Google Sign-In failed. Please try again.")

@@ -1,21 +1,26 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Zayaan Authenticator ProGuard / R8 Rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep Firestore data models and Kotlin metadata for reflection-based deserialization
+-keepattributes Signature,InnerClasses,EnclosingMethod,RuntimeVisibleAnnotations
+-keep @androidx.annotation.Keep class * { *; }
+-keep class com.example.data.model.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep BouncyCastle Argon2 and crypto providers intact
+-keep class org.bouncycastle.crypto.generators.Argon2BytesGenerator { *; }
+-keep class org.bouncycastle.crypto.params.Argon2Parameters** { *; }
+-keep class org.bouncycastle.util.encoders.** { *; }
+-dontwarn org.bouncycastle.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep ZXing QR decoder classes
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**
+
+# Keep Room database & generated implementations
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Keep Jetpack Credentials & Biometric
+-keep class androidx.credentials.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class androidx.biometric.** { *; }
