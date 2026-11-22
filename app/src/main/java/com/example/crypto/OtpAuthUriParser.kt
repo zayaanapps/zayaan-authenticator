@@ -3,9 +3,11 @@ package com.example.crypto
 import com.example.data.model.AuthenticatorAccount
 import com.example.data.model.HashAlgorithm
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.security.SecureRandom
 
 /**
  * Parses standard otpauth://totp/... provisioning URIs and Google Authenticator
@@ -83,6 +85,109 @@ object OtpAuthUriParser {
             add("period=${account.periodSeconds}")
         }.joinToString("&")
         return "otpauth://totp/$label?$params"
+    }
+
+    /**
+     * Builds Google Authenticator-compatible otpauth-migration://offline?data=... batch transfer URIs.
+     * Splits large lists into batches (default 10 per QR code) so QR density stays easy to scan.
+     */
+    fun buildMigrationUris(
+        accounts: List<AuthenticatorAccount>,
+        batchSize: Int = 10
+    ): List<String> {
+        if (accounts.isEmpty()) return emptyList()
+        val safeBatchSize = batchSize.coerceIn(1, 10)
+        val chunks = accounts.chunked(safeBatchSize)
+        val batchId = SecureRandom().nextInt() and 0x7FFFFFFF
+
+        return chunks.mapIndexed { index, chunk ->
+            val payloadBytes = encodeMigrationPayloadProtobuf(
+                accounts = chunk,
+                batchSize = chunks.size,
+                batchIndex = index,
+                batchId = batchId
+            )
+            val base64 = SafeBase64.encode(payloadBytes)
+            "otpauth-migration://offline?data=${urlEncode(base64)}"
+        }
+    }
+
+    private fun encodeMigrationPayloadProtobuf(
+        accounts: List<AuthenticatorAccount>,
+        batchSize: Int,
+        batchIndex: Int,
+        batchId: Int
+    ): ByteArray {
+        val out = ByteArrayOutputStream()
+        for (account in accounts) {
+            val entryBytes = encodeOtpParametersProtobuf(account)
+            if (entryBytes.isNotEmpty()) {
+                writeLengthDelimited(out, fieldNumber = 1, bytes = entryBytes)
+            }
+        }
+        // version = 1 (field 2, varint)
+        writeVarintField(out, fieldNumber = 2, value = 1L)
+        // batch_size (field 3, varint)
+        writeVarintField(out, fieldNumber = 3, value = batchSize.toLong())
+        // batch_index (field 4, varint)
+        writeVarintField(out, fieldNumber = 4, value = batchIndex.toLong())
+        // batch_id (field 5, varint)
+        writeVarintField(out, fieldNumber = 5, value = batchId.toLong())
+        return out.toByteArray()
+    }
+
+    private fun encodeOtpParametersProtobuf(account: AuthenticatorAccount): ByteArray {
+        val secretBytes = try {
+            TotpGenerator.decodeBase32(account.secretBase32)
+        } catch (_: Exception) {
+            return ByteArray(0)
+        }
+        val out = ByteArrayOutputStream()
+        try {
+            writeLengthDelimited(out, fieldNumber = 1, bytes = secretBytes)
+            val name = if (account.issuer.isNotBlank() && account.accountName.isNotBlank()) {
+                "${account.issuer}:${account.accountName}"
+            } else {
+                account.displayTitle
+            }
+            writeLengthDelimited(out, fieldNumber = 2, bytes = name.toByteArray(Charsets.UTF_8))
+            if (account.issuer.isNotBlank()) {
+                writeLengthDelimited(out, fieldNumber = 3, bytes = account.issuer.toByteArray(Charsets.UTF_8))
+            }
+            val algoCode = when (account.algorithm) {
+                HashAlgorithm.SHA1 -> 1L
+                HashAlgorithm.SHA256 -> 2L
+                HashAlgorithm.SHA512 -> 3L
+            }
+            writeVarintField(out, fieldNumber = 4, value = algoCode)
+            val digitsCode = if (account.digits == 8) 2L else 1L
+            writeVarintField(out, fieldNumber = 5, value = digitsCode)
+            // type = 2 (TOTP)
+            writeVarintField(out, fieldNumber = 6, value = 2L)
+            return out.toByteArray()
+        } finally {
+            secretBytes.fill(0)
+        }
+    }
+
+    private fun writeVarintField(out: ByteArrayOutputStream, fieldNumber: Int, value: Long) {
+        writeVarint(out, ((fieldNumber shl 3) or 0).toLong())
+        writeVarint(out, value)
+    }
+
+    private fun writeLengthDelimited(out: ByteArrayOutputStream, fieldNumber: Int, bytes: ByteArray) {
+        writeVarint(out, ((fieldNumber shl 3) or 2).toLong())
+        writeVarint(out, bytes.size.toLong())
+        out.write(bytes)
+    }
+
+    private fun writeVarint(out: ByteArrayOutputStream, value: Long) {
+        var v = value
+        while ((v and 0x7FL.inv()) != 0L) {
+            out.write(((v and 0x7FL) or 0x80L).toInt())
+            v = v ushr 7
+        }
+        out.write((v and 0x7FL).toInt())
     }
 
     private fun parseMigrationUri(trimmed: String): ParseResult {

@@ -11,6 +11,7 @@ import com.example.data.VaultRepository
 import com.example.data.cloud.authStateFlow
 import com.example.data.local.StoredVaultMetadata
 import com.example.data.model.AccountCategory
+import com.example.data.model.AccountSortMode
 import com.example.data.model.AppThemeMode
 import com.example.data.model.AuthenticatorAccount
 import com.example.data.model.AutoLockTimeout
@@ -105,16 +106,31 @@ class AuthenticatorViewModel(
     val filteredAccounts: StateFlow<List<AuthenticatorAccount>> = combine(
         allAccounts,
         _searchQuery,
-        _selectedCategory
-    ) { accounts, query, category ->
+        _selectedCategory,
+        securitySettings
+    ) { accounts, query, category, settings ->
         val q = query.trim().lowercase()
-        accounts.filter { acc ->
+        val matching = accounts.filter { acc ->
             val matchesCategory = category == null || acc.category == category
             val matchesQuery = q.isEmpty() ||
                 acc.issuer.lowercase().contains(q) ||
                 acc.accountName.lowercase().contains(q) ||
                 acc.category.displayName.lowercase().contains(q)
             matchesCategory && matchesQuery
+        }
+        when (settings.sortMode) {
+            AccountSortMode.CUSTOM -> matching.sortedWith(
+                compareByDescending<AuthenticatorAccount> { it.isPinned }.thenBy { it.sortOrder }
+            )
+            AccountSortMode.NAME_ASC -> matching.sortedWith(
+                compareByDescending<AuthenticatorAccount> { it.isPinned }
+                    .thenBy { it.displayTitle.lowercase() }
+                    .thenBy { it.displaySubtitle.lowercase() }
+            )
+            AccountSortMode.RECENT -> matching.sortedWith(
+                compareByDescending<AuthenticatorAccount> { it.isPinned }
+                    .thenByDescending { it.createdAtEpochMs }
+            )
         }
     }.stateIn(
         scope = viewModelScope,
@@ -467,6 +483,17 @@ class AuthenticatorViewModel(
         }
     }
 
+    fun togglePinAccount(account: AuthenticatorAccount) {
+        val nextPinned = !account.isPinned
+        viewModelScope.launch {
+            repository.updateAccount(account.copy(isPinned = nextPinned))
+            _snackbarEvents.tryEmit(
+                if (nextPinned) "Pinned ${account.displayTitle} to top" else "Unpinned ${account.displayTitle}"
+            )
+            triggerAutoBackupIfEnabled()
+        }
+    }
+
     fun moveAccount(accountId: String, moveUp: Boolean) {
         val list = allAccounts.value.toMutableList()
         val index = list.indexOfFirst { it.id == accountId }
@@ -529,6 +556,24 @@ class AuthenticatorViewModel(
     fun setAutoCloudBackupEnabled(enabled: Boolean) {
         viewModelScope.launch {
             repository.setAutoCloudBackupEnabled(enabled)
+        }
+    }
+
+    fun setPrivacyMaskCodesEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setPrivacyMaskCodesEnabled(enabled)
+        }
+    }
+
+    fun setShowNextCodePreview(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setShowNextCodePreview(enabled)
+        }
+    }
+
+    fun setAccountSortMode(mode: AccountSortMode) {
+        viewModelScope.launch {
+            repository.setAccountSortMode(mode)
         }
     }
 

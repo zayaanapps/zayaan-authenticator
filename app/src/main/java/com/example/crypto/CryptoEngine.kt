@@ -363,6 +363,7 @@ object CryptoEngine {
             put("digits", account.digits)
             put("periodSeconds", account.periodSeconds)
             put("category", account.category.name)
+            put("isPinned", account.isPinned)
             put("sortOrder", account.sortOrder)
             put("createdAtEpochMs", account.createdAtEpochMs)
             put("updatedAtEpochMs", account.updatedAtEpochMs)
@@ -380,6 +381,7 @@ object CryptoEngine {
             digits = obj.optInt("digits", 6).takeIf { it == 6 || it == 8 } ?: 6,
             periodSeconds = obj.optInt("periodSeconds", 30).takeIf { it in 10..300 } ?: 30,
             category = AccountCategory.fromRaw(obj.optString("category", "GENERAL")),
+            isPinned = obj.optBoolean("isPinned", false),
             sortOrder = obj.optInt("sortOrder", 0),
             createdAtEpochMs = obj.optLong("createdAtEpochMs", 0L),
             updatedAtEpochMs = obj.optLong("updatedAtEpochMs", 0L),

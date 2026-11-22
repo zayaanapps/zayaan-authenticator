@@ -3,10 +3,15 @@ package com.example.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -28,38 +33,55 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -78,18 +100,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,17 +121,21 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.crypto.TotpGenerator
 import com.example.data.model.AccountCategory
+import com.example.data.model.AccountSortMode
 import com.example.data.model.AuthenticatorAccount
 import com.example.data.model.CloudSyncState
 import com.example.data.model.SecuritySettings
 import com.example.ui.CloudStatusUi
-import com.example.ui.theme.IssuerPalette
+import com.example.ui.components.AccountQrDialog
+import com.example.ui.components.IconTile
+import com.example.ui.components.IssuerBadge
+import com.example.ui.components.SensitiveClipboardHelper
+import com.example.ui.components.categoryIcon
 import com.example.ui.theme.TimerCriticalDark
 import com.example.ui.theme.TimerHealthyDark
 import com.example.ui.theme.TimerWarningDark
 import com.example.ui.theme.TotpCodeTextStyle
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,12 +151,16 @@ fun DashboardScreen(
     snackbarHostState: SnackbarHostState,
     onSearchQueryChange: (String) -> Unit,
     onSelectCategory: (AccountCategory?) -> Unit,
+    onSelectSortMode: (AccountSortMode) -> Unit,
+    onTogglePrivacyMask: (Boolean) -> Unit,
     onToggleReorderMode: () -> Unit,
+    onTogglePinAccount: (AuthenticatorAccount) -> Unit,
     onMoveAccount: (String, Boolean) -> Unit,
     onCopyCode: (AuthenticatorAccount, String) -> Unit,
     onOpenQrScanner: () -> Unit,
     onImportQrFromPhoto: () -> Unit,
     onOpenManualEntry: () -> Unit,
+    onOpenTransferAccounts: () -> Unit,
     onEditAccount: (AuthenticatorAccount) -> Unit,
     onDeleteAccount: (AuthenticatorAccount) -> Unit,
     onOpenSecuritySettings: () -> Unit,
@@ -137,10 +169,14 @@ fun DashboardScreen(
 ) {
     var showSearchBar by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
+    var showTopOverflowMenu by remember { mutableStateOf(false) }
+    var showSortDialog by remember { mutableStateOf(false) }
     var accountPendingDelete by remember { mutableStateOf<AuthenticatorAccount?>(null) }
+    var accountShowingQr by remember { mutableStateOf<AuthenticatorAccount?>(null) }
     var recentlyCopiedId by remember { mutableStateOf<String?>(null) }
+    var revealedAccountId by remember { mutableStateOf<String?>(null) }
 
-    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(recentlyCopiedId) {
@@ -150,24 +186,50 @@ fun DashboardScreen(
         }
     }
 
+    LaunchedEffect(revealedAccountId) {
+        if (revealedAccountId != null) {
+            delay(12_000L)
+            revealedAccountId = null
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "Zayaan Authenticator",
-                            style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        IconTile(
+                            icon = Icons.Default.Shield,
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 36.dp,
+                            iconSize = 20.dp
                         )
-                        Text(
-                            text = if (totalAccountCount == 1) "1 encrypted account" else "$totalAccountCount encrypted accounts",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column {
+                            Text(
+                                text = "Zayaan Authenticator",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = buildString {
+                                    append(if (totalAccountCount == 1) "1 account" else "$totalAccountCount accounts")
+                                    if (securitySettings.sortMode != AccountSortMode.CUSTOM) {
+                                        append(" • ${securitySettings.sortMode.displayName}")
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -181,17 +243,34 @@ fun DashboardScreen(
                         ) {
                             Icon(
                                 imageVector = if (showSearchBar) Icons.Default.Close else Icons.Default.Search,
-                                contentDescription = "Search accounts"
+                                contentDescription = "Search accounts",
+                                tint = if (showSearchBar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                             )
                         }
                         IconButton(
-                            onClick = onToggleReorderMode,
-                            modifier = Modifier.testTag("toggle_reorder_button")
+                            onClick = {
+                                val next = !securitySettings.privacyMaskCodesEnabled
+                                onTogglePrivacyMask(next)
+                                if (!next) revealedAccountId = null
+                            },
+                            modifier = Modifier.testTag("toggle_privacy_mask_button")
                         ) {
                             Icon(
-                                imageVector = if (isReorderMode) Icons.Default.Check else Icons.Default.SwapVert,
-                                contentDescription = if (isReorderMode) "Done organizing" else "Reorder and manage accounts",
-                                tint = if (isReorderMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                imageVector = if (securitySettings.privacyMaskCodesEnabled) {
+                                    Icons.Default.VisibilityOff
+                                } else {
+                                    Icons.Default.Visibility
+                                },
+                                contentDescription = if (securitySettings.privacyMaskCodesEnabled) {
+                                    "Disable tap-to-reveal privacy mode"
+                                } else {
+                                    "Enable tap-to-reveal privacy mode"
+                                },
+                                tint = if (securitySettings.privacyMaskCodesEnabled) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
                             )
                         }
                     }
@@ -206,14 +285,82 @@ fun DashboardScreen(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = onOpenSecuritySettings,
-                        modifier = Modifier.testTag("open_security_settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = "Security and app settings"
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showTopOverflowMenu = true },
+                            modifier = Modifier.testTag("dashboard_more_menu_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "More vault options"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showTopOverflowMenu,
+                            onDismissRequest = { showTopOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Transfer Accounts (QR)") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                onClick = {
+                                    showTopOverflowMenu = false
+                                    onOpenTransferAccounts()
+                                },
+                                modifier = Modifier.testTag("menu_transfer_accounts")
+                            )
+                            if (totalAccountCount > 0) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isReorderMode) "Done Organizing" else "Organize & Reorder") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (isReorderMode) Icons.Default.Check else Icons.Default.SwapVert,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    },
+                                    onClick = {
+                                        showTopOverflowMenu = false
+                                        onToggleReorderMode()
+                                    },
+                                    modifier = Modifier.testTag("toggle_reorder_button")
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Sort: ${securitySettings.sortMode.displayName}") },
+                                    leadingIcon = {
+                                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                    },
+                                    onClick = {
+                                        showTopOverflowMenu = false
+                                        showSortDialog = true
+                                    },
+                                    modifier = Modifier.testTag("menu_sort_accounts")
+                                )
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text("Cloud Backup & Sync") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CloudDone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                onClick = {
+                                    showTopOverflowMenu = false
+                                    onOpenCloudBackup()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Security & Settings") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                onClick = {
+                                    showTopOverflowMenu = false
+                                    onOpenSecuritySettings()
+                                },
+                                modifier = Modifier.testTag("open_security_settings_button")
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -225,7 +372,7 @@ fun DashboardScreen(
             ExtendedFloatingActionButton(
                 onClick = { showAddSheet = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add Account") },
+                text = { Text("Add Account", fontWeight = FontWeight.SemiBold) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp),
@@ -244,7 +391,7 @@ fun DashboardScreen(
                     .widthIn(max = 680.dp)
                     .fillMaxSize()
             ) {
-                // Cloud Backup & Sync Status Strip (tappable to open Cloud Backup & Recovery Hub)
+                // Cloud Backup & Sync Status Strip
                 CloudStatusStrip(
                     cloudStatus = cloudStatus,
                     onClick = onOpenCloudBackup,
@@ -274,7 +421,7 @@ fun DashboardScreen(
                     )
                 }
 
-                // Category filter chips
+                // Category filter chips with crisp leading icons & borders
                 if (totalAccountCount > 0) {
                     Row(
                         modifier = Modifier
@@ -283,18 +430,20 @@ fun DashboardScreen(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FilterChip(
+                        VaultCategoryChip(
+                            label = "All",
+                            icon = categoryIcon(null),
                             selected = selectedCategory == null,
-                            onClick = { onSelectCategory(null) },
-                            label = { Text("All") }
+                            onClick = { onSelectCategory(null) }
                         )
                         AccountCategory.entries.forEach { category ->
-                            FilterChip(
+                            VaultCategoryChip(
+                                label = category.displayName,
+                                icon = categoryIcon(category),
                                 selected = selectedCategory == category,
                                 onClick = {
                                     onSelectCategory(if (selectedCategory == category) null else category)
-                                },
-                                label = { Text(category.displayName) }
+                                }
                             )
                         }
                     }
@@ -303,17 +452,38 @@ fun DashboardScreen(
                 if (isReorderMode && accounts.isNotEmpty()) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "Organize Mode: Use arrows to reorder, or tap Edit / Delete.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SwapVert,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "Organize Mode: Reorder, pin, edit, or remove accounts.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            TextButton(onClick = onToggleReorderMode) {
+                                Text("Done")
+                            }
+                        }
                     }
                 }
 
@@ -321,6 +491,7 @@ fun DashboardScreen(
                     EmptyVaultState(
                         hasAnyAccounts = totalAccountCount > 0,
                         onScanQr = onOpenQrScanner,
+                        onImportQrImage = onImportQrFromPhoto,
                         onManualEntry = onOpenManualEntry,
                         onOpenCloudRestore = onOpenCloudBackup
                     )
@@ -342,12 +513,13 @@ fun DashboardScreen(
                             key = { _, item -> item.id }
                         ) { index, account ->
                             val timeSeconds = currentTimeMillis / 1000L
+                            val periodStep = Math.floorDiv(timeSeconds, account.periodSeconds.toLong())
                             val code = remember(
                                 account.secretBase32,
                                 account.algorithm,
                                 account.digits,
                                 account.periodSeconds,
-                                Math.floorDiv(timeSeconds, account.periodSeconds.toLong())
+                                periodStep
                             ) {
                                 try {
                                     TotpGenerator.generateCode(
@@ -361,6 +533,25 @@ fun DashboardScreen(
                                     "------"
                                 }
                             }
+                            val nextCode = remember(
+                                account.secretBase32,
+                                account.algorithm,
+                                account.digits,
+                                account.periodSeconds,
+                                periodStep
+                            ) {
+                                try {
+                                    TotpGenerator.generateCode(
+                                        secretBase32 = account.secretBase32,
+                                        timeSeconds = timeSeconds + account.periodSeconds,
+                                        periodSeconds = account.periodSeconds,
+                                        digits = account.digits,
+                                        algorithm = account.algorithm
+                                    )
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
                             val remainingSeconds = TotpGenerator.remainingSeconds(
                                 timeSeconds = timeSeconds,
                                 periodSeconds = account.periodSeconds
@@ -369,22 +560,61 @@ fun DashboardScreen(
                                 timeMillis = currentTimeMillis,
                                 periodSeconds = account.periodSeconds
                             )
+                            val isMasked = securitySettings.privacyMaskCodesEnabled &&
+                                revealedAccountId != account.id
 
                             AuthenticatorAccountCard(
                                 account = account,
                                 rawCode = code,
+                                nextRawCode = nextCode,
                                 remainingSeconds = remainingSeconds,
                                 progress = progress,
                                 isCopied = recentlyCopiedId == account.id,
+                                isMasked = isMasked,
+                                showNextCodePreview = securitySettings.showNextCodePreview &&
+                                    remainingSeconds <= 7 &&
+                                    !isMasked &&
+                                    nextCode != null,
                                 isReorderMode = isReorderMode,
                                 canMoveUp = index > 0,
                                 canMoveDown = index < accounts.lastIndex,
-                                onTapCopy = {
-                                    clipboardManager.setText(AnnotatedString(code))
+                                onCardTap = {
+                                    if (isMasked) {
+                                        revealedAccountId = account.id
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } else {
+                                        SensitiveClipboardHelper.copySensitiveCode(
+                                            context = context,
+                                            label = "${account.displayTitle} code",
+                                            code = code
+                                        )
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        recentlyCopiedId = account.id
+                                        onCopyCode(account, code)
+                                    }
+                                },
+                                onCopyCurrentCode = {
+                                    SensitiveClipboardHelper.copySensitiveCode(
+                                        context = context,
+                                        label = "${account.displayTitle} code",
+                                        code = code
+                                    )
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     recentlyCopiedId = account.id
                                     onCopyCode(account, code)
                                 },
+                                onCopyNextCode = { upcoming ->
+                                    SensitiveClipboardHelper.copySensitiveCode(
+                                        context = context,
+                                        label = "${account.displayTitle} next code",
+                                        code = upcoming
+                                    )
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    recentlyCopiedId = account.id
+                                    onCopyCode(account, upcoming)
+                                },
+                                onTogglePin = { onTogglePinAccount(account) },
+                                onShowQr = { accountShowingQr = account },
                                 onMoveUp = { onMoveAccount(account.id, true) },
                                 onMoveDown = { onMoveAccount(account.id, false) },
                                 onEdit = { onEditAccount(account) },
@@ -404,73 +634,170 @@ fun DashboardScreen(
             containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
                     .padding(bottom = 28.dp)
             ) {
-                Text(
-                    text = "Add Authenticator Account",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-                ListItem(
-                    headlineContent = { Text("Scan QR Code") },
-                    supportingContent = { Text("Supports standard TOTP & Google Authenticator export QR codes") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    IconTile(
+                        icon = Icons.Default.Add,
+                        tint = MaterialTheme.colorScheme.primary,
+                        size = 38.dp,
+                        iconSize = 20.dp
+                    )
+                    Column {
+                        Text(
+                            text = "Add Authenticator Account",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
                         )
-                    },
-                    modifier = Modifier
-                        .clickable {
-                            showAddSheet = false
-                            onOpenQrScanner()
-                        }
-                        .testTag("sheet_scan_qr")
-                )
-                ListItem(
-                    headlineContent = { Text("Import QR Code Image") },
-                    supportingContent = { Text("Select a saved QR screenshot via secure Android Photo Picker") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary
+                        Text(
+                            text = "Choose how to add or transfer your 2FA keys",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    },
-                    modifier = Modifier
-                        .clickable {
-                            showAddSheet = false
-                            onImportQrFromPhoto()
-                        }
-                        .testTag("sheet_import_qr_image")
+                    }
+                }
+
+                AddOptionCard(
+                    title = "Scan a QR Code",
+                    subtitle = "Supports standard TOTP & Google Authenticator export QR codes",
+                    icon = Icons.Default.QrCodeScanner,
+                    accentColor = MaterialTheme.colorScheme.primary,
+                    testTag = "sheet_scan_qr",
+                    onClick = {
+                        showAddSheet = false
+                        onOpenQrScanner()
+                    }
                 )
-                ListItem(
-                    headlineContent = { Text("Enter Setup Key Manually") },
-                    supportingContent = { Text("Type issuer, account name, Base32 secret, algorithm & interval") },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.Keyboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    },
-                    modifier = Modifier
-                        .clickable {
-                            showAddSheet = false
-                            onOpenManualEntry()
-                        }
-                        .testTag("sheet_manual_entry")
+                AddOptionCard(
+                    title = "Import QR Code Image",
+                    subtitle = "Pick a saved QR screenshot via zero-permission Photo Picker",
+                    icon = Icons.Default.Image,
+                    accentColor = MaterialTheme.colorScheme.secondary,
+                    testTag = "sheet_import_qr_image",
+                    onClick = {
+                        showAddSheet = false
+                        onImportQrFromPhoto()
+                    }
+                )
+                AddOptionCard(
+                    title = "Enter a Setup Key",
+                    subtitle = "Type or paste a Base32 secret or otpauth:// link manually",
+                    icon = Icons.Default.Keyboard,
+                    accentColor = MaterialTheme.colorScheme.tertiary,
+                    testTag = "sheet_manual_entry",
+                    onClick = {
+                        showAddSheet = false
+                        onOpenManualEntry()
+                    }
+                )
+                AddOptionCard(
+                    title = "Transfer Accounts (QR Export / Import)",
+                    subtitle = "Move accounts offline to or from another device",
+                    icon = Icons.Default.SwapHoriz,
+                    accentColor = MaterialTheme.colorScheme.primary,
+                    testTag = "sheet_transfer_accounts",
+                    onClick = {
+                        showAddSheet = false
+                        onOpenTransferAccounts()
+                    }
                 )
             }
         }
     }
 
+    if (showSortDialog) {
+        AlertDialog(
+            onDismissRequest = { showSortDialog = false },
+            icon = {
+                IconTile(
+                    icon = Icons.AutoMirrored.Filled.Sort,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Sort Accounts") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Pinned accounts always appear at the top of your vault.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                    AccountSortMode.entries.forEach { mode ->
+                        Surface(
+                            onClick = {
+                                onSelectSortMode(mode)
+                                showSortDialog = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (securitySettings.sortMode == mode) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                            } else {
+                                Color.Transparent
+                            },
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (securitySettings.sortMode == mode) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                                } else {
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                RadioButton(
+                                    selected = securitySettings.sortMode == mode,
+                                    onClick = {
+                                        onSelectSortMode(mode)
+                                        showSortDialog = false
+                                    }
+                                )
+                                Text(
+                                    text = mode.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(start = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSortDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    accountShowingQr?.let { account ->
+        AccountQrDialog(
+            account = account,
+            onDismiss = { accountShowingQr = null }
+        )
+    }
+
     accountPendingDelete?.let { account ->
         AlertDialog(
             onDismissRequest = { accountPendingDelete = null },
+            icon = {
+                IconTile(
+                    icon = Icons.Default.DeleteOutline,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
             title = { Text("Delete ${account.displayTitle}?") },
             text = {
                 Text(
@@ -497,6 +824,87 @@ fun DashboardScreen(
 }
 
 @Composable
+private fun VaultCategoryChip(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+        },
+        label = { Text(label) },
+        shape = RoundedCornerShape(12.dp),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+            selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f),
+            borderWidth = 1.dp,
+            selectedBorderWidth = 1.2.dp
+        )
+    )
+}
+
+@Composable
+private fun AddOptionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    testTag: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)
+        ) {
+            IconTile(
+                icon = icon,
+                tint = accentColor,
+                size = 42.dp,
+                iconSize = 22.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 private fun CloudStatusStrip(
     cloudStatus: CloudStatusUi,
     onClick: () -> Unit,
@@ -506,12 +914,12 @@ private fun CloudStatusStrip(
         CloudSyncState.SYNCED -> Triple(
             Icons.Default.CloudDone,
             MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
         )
         CloudSyncState.SYNCING -> Triple(
             Icons.Default.CloudSync,
             MaterialTheme.colorScheme.secondary,
-            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f)
         )
         CloudSyncState.CONFLICT_DETECTED -> Triple(
             Icons.Default.WarningAmber,
@@ -532,9 +940,9 @@ private fun CloudStatusStrip(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = container,
-        border = BorderStroke(1.dp, tint.copy(alpha = 0.25f)),
+        border = BorderStroke(1.2.dp, tint.copy(alpha = 0.32f)),
         modifier = modifier
             .fillMaxWidth()
             .testTag("cloud_status_strip")
@@ -542,15 +950,15 @@ private fun CloudStatusStrip(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = "Cloud backup status",
+            IconTile(
+                icon = icon,
                 tint = tint,
-                modifier = Modifier.size(20.dp)
+                size = 32.dp,
+                iconSize = 18.dp
             )
             Text(
                 text = cloudStatus.statusDetail,
@@ -560,11 +968,19 @@ private fun CloudStatusStrip(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            Text(
-                text = if (cloudStatus.signedInUser == null) "Backup" else "Manage",
-                style = MaterialTheme.typography.labelMedium,
-                color = tint
-            )
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = tint.copy(alpha = 0.14f),
+                border = BorderStroke(1.dp, tint.copy(alpha = 0.30f))
+            ) {
+                Text(
+                    text = if (cloudStatus.signedInUser == null) "Backup" else "Manage",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = tint,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
@@ -573,21 +989,27 @@ private fun CloudStatusStrip(
 private fun AuthenticatorAccountCard(
     account: AuthenticatorAccount,
     rawCode: String,
+    nextRawCode: String?,
     remainingSeconds: Int,
     progress: Float,
     isCopied: Boolean,
+    isMasked: Boolean,
+    showNextCodePreview: Boolean,
     isReorderMode: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
-    onTapCopy: () -> Unit,
+    onCardTap: () -> Unit,
+    onCopyCurrentCode: () -> Unit,
+    onCopyNextCode: (String) -> Unit,
+    onTogglePin: () -> Unit,
+    onShowQr: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val badgeColor = remember(account.displayTitle) {
-        IssuerPalette[abs(account.displayTitle.hashCode()) % IssuerPalette.size]
-    }
+    var showCardMenu by remember { mutableStateOf(false) }
+
     val targetTimerColor = when {
         remainingSeconds <= 5 -> TimerCriticalDark
         remainingSeconds <= 10 -> TimerWarningDark
@@ -598,20 +1020,26 @@ private fun AuthenticatorAccountCard(
         animationSpec = tween(250),
         label = "timerColor"
     )
+    val cardBorderColor by animateColorAsState(
+        targetValue = when {
+            isCopied -> MaterialTheme.colorScheme.primary
+            remainingSeconds <= 5 && !isMasked -> TimerCriticalDark.copy(alpha = 0.55f)
+            account.isPinned -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+            else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+        },
+        animationSpec = tween(250),
+        label = "cardBorderColor"
+    )
 
     Card(
-        onClick = { if (!isReorderMode) onTapCopy() },
+        onClick = { if (!isReorderMode) onCardTap() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(
-            width = 1.dp,
-            color = if (isCopied) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            }
+            width = if (isCopied || account.isPinned) 1.4.dp else 1.dp,
+            color = cardBorderColor
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .testTag("account_card_${account.id}")
@@ -625,20 +1053,12 @@ private fun AuthenticatorAccountCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(badgeColor.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = account.displayTitle.take(2).uppercase(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = badgeColor
-                    )
-                }
+                IssuerBadge(
+                    issuer = account.issuer,
+                    accountName = account.accountName,
+                    category = account.category,
+                    size = 44.dp
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -647,9 +1067,18 @@ private fun AuthenticatorAccountCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        if (account.isPinned) {
+                            Icon(
+                                imageVector = Icons.Default.PushPin,
+                                contentDescription = "Pinned account",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                         Text(
                             text = account.displayTitle,
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -657,15 +1086,27 @@ private fun AuthenticatorAccountCard(
                         )
                         if (account.category != AccountCategory.GENERAL) {
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                                shape = RoundedCornerShape(7.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                             ) {
-                                Text(
-                                    text = account.category.displayName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                ) {
+                                    Icon(
+                                        imageVector = categoryIcon(account.category),
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = account.category.displayName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -700,18 +1141,94 @@ private fun AuthenticatorAccountCard(
                         }
                     }
                 } else {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit ${account.displayTitle}",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showCardMenu = true },
+                            modifier = Modifier.testTag("account_menu_${account.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Options for ${account.displayTitle}",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showCardMenu,
+                            onDismissRequest = { showCardMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Copy Current Code") },
+                                leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                onClick = {
+                                    showCardMenu = false
+                                    onCopyCurrentCode()
+                                }
+                            )
+                            if (nextRawCode != null) {
+                                DropdownMenuItem(
+                                    text = { Text("Copy Next Code") },
+                                    leadingIcon = { Icon(Icons.Default.FastForward, contentDescription = null) },
+                                    onClick = {
+                                        showCardMenu = false
+                                        onCopyNextCode(nextRawCode)
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(if (account.isPinned) "Unpin from Top" else "Pin to Top") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (account.isPinned) Icons.Outlined.PushPin else Icons.Default.PushPin,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showCardMenu = false
+                                    onTogglePin()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Show QR Code") },
+                                leadingIcon = { Icon(Icons.Default.QrCode2, contentDescription = null) },
+                                onClick = {
+                                    showCardMenu = false
+                                    onShowQr()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Edit Account") },
+                                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                                onClick = {
+                                    showCardMenu = false
+                                    onEdit()
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            DropdownMenuItem(
+                                text = { Text("Delete Account", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.DeleteOutline,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showCardMenu = false
+                                    onDelete()
+                                }
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f),
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -722,35 +1239,74 @@ private fun AuthenticatorAccountCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    val displayedCode = if (isMasked) {
+                        if (account.digits == 8) "•••• ••••" else "••• •••"
+                    } else {
+                        TotpGenerator.formatCodeForDisplay(rawCode)
+                    }
                     Text(
-                        text = TotpGenerator.formatCodeForDisplay(rawCode),
+                        text = displayedCode,
                         style = TotpCodeTextStyle,
-                        color = if (remainingSeconds <= 5) animatedTimerColor else MaterialTheme.colorScheme.onSurface,
+                        color = when {
+                            isMasked -> MaterialTheme.colorScheme.onSurfaceVariant
+                            remainingSeconds <= 5 -> animatedTimerColor
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
                         modifier = Modifier.testTag("totp_code_${account.id}")
                     )
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isCopied) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                        }
+                        onClick = if (isMasked) onCardTap else onCopyCurrentCode,
+                        shape = RoundedCornerShape(10.dp),
+                        color = when {
+                            isCopied -> MaterialTheme.colorScheme.primaryContainer
+                            isMasked -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+                        },
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = when {
+                                isCopied -> MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
+                                isMasked -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
+                                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                            }
+                        )
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                         ) {
                             Icon(
-                                imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
-                                contentDescription = if (isCopied) "Copied" else "Tap to copy",
-                                tint = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                imageVector = when {
+                                    isCopied -> Icons.Default.Check
+                                    isMasked -> Icons.Default.Visibility
+                                    else -> Icons.Default.ContentCopy
+                                },
+                                contentDescription = when {
+                                    isCopied -> "Copied"
+                                    isMasked -> "Reveal code"
+                                    else -> "Copy code"
+                                },
+                                tint = when {
+                                    isCopied -> MaterialTheme.colorScheme.primary
+                                    isMasked -> MaterialTheme.colorScheme.secondary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = if (isCopied) "Copied" else "Copy",
+                                text = when {
+                                    isCopied -> "Copied"
+                                    isMasked -> "Reveal"
+                                    else -> "Copy"
+                                },
                                 style = MaterialTheme.typography.labelSmall,
-                                color = if (isCopied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.SemiBold,
+                                color = when {
+                                    isCopied -> MaterialTheme.colorScheme.primary
+                                    isMasked -> MaterialTheme.colorScheme.secondary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             )
                         }
                     }
@@ -761,6 +1317,60 @@ private fun AuthenticatorAccountCard(
                     progress = progress,
                     ringColor = animatedTimerColor
                 )
+            }
+
+            // Google Authenticator / power-user convenience: preview & one-tap copy upcoming code when expiring soon
+            AnimatedVisibility(
+                visible = showNextCodePreview && nextRawCode != null,
+                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
+            ) {
+                nextRawCode?.let { upcoming ->
+                    Surface(
+                        onClick = { onCopyNextCode(upcoming) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                            .testTag("next_code_chip_${account.id}")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FastForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = "Next code:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = TotpGenerator.formatCodeForDisplay(upcoming),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                            Text(
+                                text = "Tap to copy",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -775,12 +1385,24 @@ private fun CircularCountdownTimer(
     val trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(44.dp)
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .background(ringColor.copy(alpha = 0.08f))
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 3.5.dp.toPx()
             val inset = strokeWidth / 2f
             val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+            // Subtle Google Authenticator-inspired inner pie sweep
+            drawArc(
+                color = ringColor.copy(alpha = 0.14f),
+                startAngle = -90f,
+                sweepAngle = 360f * progress,
+                useCenter = true,
+                topLeft = Offset(inset + 3.dp.toPx(), inset + 3.dp.toPx()),
+                size = Size(arcSize.width - 6.dp.toPx(), arcSize.height - 6.dp.toPx())
+            )
             drawArc(
                 color = trackColor,
                 startAngle = 0f,
@@ -813,9 +1435,11 @@ private fun CircularCountdownTimer(
 private fun EmptyVaultState(
     hasAnyAccounts: Boolean,
     onScanQr: () -> Unit,
+    onImportQrImage: () -> Unit,
     onManualEntry: () -> Unit,
     onOpenCloudRestore: () -> Unit
 ) {
+    val primaryGlow = MaterialTheme.colorScheme.primary
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -824,25 +1448,45 @@ private fun EmptyVaultState(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.widthIn(max = 360.dp)
+            modifier = Modifier.widthIn(max = 380.dp)
         ) {
             if (!hasAnyAccounts) {
-                Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.size(132.dp)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(164.dp)
+                        .drawBehind {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        primaryGlow.copy(alpha = 0.24f),
+                                        Color.Transparent
+                                    )
+                                ),
+                                radius = size.minDimension * 0.58f
+                            )
+                        }
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_vault_shield_1795105196684),
-                        contentDescription = "Zero-knowledge security vault shield",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(30.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(2.dp, primaryGlow.copy(alpha = 0.45f)),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.size(128.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.img_vault_shield_1795105196684),
+                            contentDescription = "Zero-knowledge security vault shield",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = "Your Encrypted Vault is Ready",
                     style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -852,22 +1496,12 @@ private fun EmptyVaultState(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(22.dp))
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedButton(
-                        onClick = onManualEntry,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .testTag("empty_manual_entry_button")
-                    ) {
-                        Text("Enter Key")
-                    }
-                    OutlinedButton(
+                    Button(
                         onClick = onScanQr,
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier
@@ -875,20 +1509,58 @@ private fun EmptyVaultState(
                             .height(48.dp)
                             .testTag("empty_scan_qr_button")
                     ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text("Scan QR")
+                    }
+                    OutlinedButton(
+                        onClick = onManualEntry,
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("empty_manual_entry_button")
+                    ) {
+                        Icon(Icons.Default.Keyboard, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Enter Key")
                     }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = onImportQrImage,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Import QR Code Image")
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 TextButton(
                     onClick = onOpenCloudRestore,
                     modifier = Modifier.testTag("empty_restore_cloud_button")
                 ) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text("Restore from Encrypted Cloud Backup")
                 }
             } else {
+                IconTile(
+                    icon = Icons.Default.Search,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = 52.dp,
+                    iconSize = 26.dp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "No matching accounts",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(

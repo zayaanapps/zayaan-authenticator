@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.crypto.Argon2KdfParams
 import com.example.crypto.WrappedVaultKeyPayload
+import com.example.data.model.AccountSortMode
 import com.example.data.model.AppThemeMode
 import com.example.data.model.AutoLockTimeout
 import com.example.data.model.SecuritySettings
@@ -68,6 +69,9 @@ class VaultPreferencesStore(private val dataStore: DataStore<Preferences>) {
         val SCREENSHOT_PROTECTION = booleanPreferencesKey("screenshot_protection")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val AUTO_CLOUD_BACKUP = booleanPreferencesKey("auto_cloud_backup")
+        val PRIVACY_MASK_CODES = booleanPreferencesKey("privacy_mask_codes")
+        val SHOW_NEXT_CODE_PREVIEW = booleanPreferencesKey("show_next_code_preview")
+        val ACCOUNT_SORT_MODE = stringPreferencesKey("account_sort_mode")
     }
 
     val securitySettingsFlow: Flow<SecuritySettings> = dataStore.data.map { prefs ->
@@ -78,7 +82,10 @@ class VaultPreferencesStore(private val dataStore: DataStore<Preferences>) {
             screenshotProtectionEnabled = prefs[Keys.SCREENSHOT_PROTECTION] ?: true,
             themeMode = AppThemeMode.fromRaw(prefs[Keys.THEME_MODE]),
             autoCloudBackupEnabled = prefs[Keys.AUTO_CLOUD_BACKUP] ?: true,
-            recoveryPasswordConfigured = !prefs[Keys.CLOUD_WRAPPED_VAULT_KEY].isNullOrBlank()
+            recoveryPasswordConfigured = !prefs[Keys.CLOUD_WRAPPED_VAULT_KEY].isNullOrBlank(),
+            privacyMaskCodesEnabled = prefs[Keys.PRIVACY_MASK_CODES] ?: false,
+            showNextCodePreview = prefs[Keys.SHOW_NEXT_CODE_PREVIEW] ?: true,
+            sortMode = AccountSortMode.fromRaw(prefs[Keys.ACCOUNT_SORT_MODE])
         )
     }
 
@@ -213,6 +220,24 @@ class VaultPreferencesStore(private val dataStore: DataStore<Preferences>) {
     suspend fun setAutoCloudBackupEnabled(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[Keys.AUTO_CLOUD_BACKUP] = enabled
+        }
+    }
+
+    suspend fun setPrivacyMaskCodesEnabled(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.PRIVACY_MASK_CODES] = enabled
+        }
+    }
+
+    suspend fun setShowNextCodePreview(enabled: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[Keys.SHOW_NEXT_CODE_PREVIEW] = enabled
+        }
+    }
+
+    suspend fun setAccountSortMode(mode: AccountSortMode) {
+        dataStore.edit { prefs ->
+            prefs[Keys.ACCOUNT_SORT_MODE] = mode.name
         }
     }
 }

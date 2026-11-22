@@ -2,6 +2,7 @@ package com.example
 
 import com.example.crypto.OtpAuthUriParser
 import com.example.crypto.SafeBase64
+import com.example.data.model.AuthenticatorAccount
 import com.example.data.model.HashAlgorithm
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -91,5 +92,61 @@ class OtpAuthUriParserTest {
         assertEquals("user@gmail.com", accounts.first().accountName)
         assertEquals(HashAlgorithm.SHA256, accounts.first().algorithm)
         assertEquals(8, accounts.first().digits)
+    }
+
+    @Test
+    fun `builds and round-trips Google Authenticator migration URIs across batches`() {
+        val original = listOf(
+            AuthenticatorAccount(
+                issuer = "Google",
+                accountName = "alice@gmail.com",
+                secretBase32 = "JBSWY3DPEHPK3PXP",
+                algorithm = HashAlgorithm.SHA1,
+                digits = 6
+            ),
+            AuthenticatorAccount(
+                issuer = "GitHub",
+                accountName = "alice-dev",
+                secretBase32 = "GEZDGNBVGY3TQOJQ",
+                algorithm = HashAlgorithm.SHA256,
+                digits = 8
+            ),
+            AuthenticatorAccount(
+                issuer = "AWS",
+                accountName = "prod-root",
+                secretBase32 = "MFRGGZDFMZTWQ2LK",
+                algorithm = HashAlgorithm.SHA512,
+                digits = 6
+            )
+        )
+
+        val uris = OtpAuthUriParser.buildMigrationUris(original, batchSize = 2)
+        assertEquals(2, uris.size)
+        assertTrue(uris.all { it.startsWith("otpauth-migration://offline?data=") })
+
+        val decodedAll = uris.flatMap { uri ->
+            val parsed = OtpAuthUriParser.parse(uri)
+            assertTrue(parsed is OtpAuthUriParser.ParseResult.Success)
+            (parsed as OtpAuthUriParser.ParseResult.Success).accounts
+        }
+
+        assertEquals(3, decodedAll.size)
+        assertEquals("Google", decodedAll[0].issuer)
+        assertEquals("alice@gmail.com", decodedAll[0].accountName)
+        assertEquals("JBSWY3DPEHPK3PXP", decodedAll[0].secretBase32)
+        assertEquals(HashAlgorithm.SHA1, decodedAll[0].algorithm)
+        assertEquals(6, decodedAll[0].digits)
+
+        assertEquals("GitHub", decodedAll[1].issuer)
+        assertEquals("alice-dev", decodedAll[1].accountName)
+        assertEquals("GEZDGNBVGY3TQOJQ", decodedAll[1].secretBase32)
+        assertEquals(HashAlgorithm.SHA256, decodedAll[1].algorithm)
+        assertEquals(8, decodedAll[1].digits)
+
+        assertEquals("AWS", decodedAll[2].issuer)
+        assertEquals("prod-root", decodedAll[2].accountName)
+        assertEquals("MFRGGZDFMZTWQ2LK", decodedAll[2].secretBase32)
+        assertEquals(HashAlgorithm.SHA512, decodedAll[2].algorithm)
+        assertEquals(6, decodedAll[2].digits)
     }
 }

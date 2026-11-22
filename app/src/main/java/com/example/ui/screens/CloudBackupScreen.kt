@@ -20,9 +20,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Key
@@ -82,6 +84,7 @@ import com.example.data.cloud.GoogleAuthHelper
 import com.example.data.model.CloudSyncState
 import com.example.data.model.SecuritySettings
 import com.example.ui.CloudStatusUi
+import com.example.ui.components.IconTile
 import com.example.ui.theme.TimerCriticalDark
 import com.example.ui.theme.TimerHealthyDark
 import com.example.ui.theme.TimerWarningDark
@@ -122,7 +125,20 @@ fun CloudBackupScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Cloud Backup & Recovery") },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        IconTile(
+                            icon = Icons.Default.CloudDone,
+                            tint = MaterialTheme.colorScheme.primary,
+                            size = 34.dp,
+                            iconSize = 18.dp
+                        )
+                        Text("Cloud Backup & Recovery")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -150,9 +166,10 @@ fun CloudBackupScreen(
             ) {
                 // 1. Google Account Authentication Card (Jetpack Credential Manager)
                 Card(
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.42f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -163,15 +180,16 @@ fun CloudBackupScreen(
                         if (user == null) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudOff,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                IconTile(
+                                    icon = Icons.Default.CloudOff,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    size = 42.dp,
+                                    iconSize = 22.dp
                                 )
                                 Column {
-                                    Text("Encrypted Cloud Backup Off", style = MaterialTheme.typography.titleMedium)
+                                    Text("Encrypted Cloud Backup Off", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         text = "Sign in with Google to back up & sync your encrypted vault across devices.",
                                         style = MaterialTheme.typography.bodySmall,
@@ -224,13 +242,20 @@ fun CloudBackupScreen(
                         } else {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
+                                IconTile(
+                                    icon = Icons.Default.AccountCircle,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    size = 42.dp,
+                                    iconSize = 24.dp
+                                )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = user.displayName?.takeIf { it.isNotBlank() } ?: "Google Account",
-                                        style = MaterialTheme.typography.titleMedium
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
                                         text = user.email ?: user.uid,
@@ -336,9 +361,10 @@ fun CloudBackupScreen(
                 // 3. Vault Sync Status & Actions (when signed in)
                 if (cloudStatus.signedInUser != null) {
                     Card(
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.42f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -347,19 +373,20 @@ fun CloudBackupScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDone,
-                                    contentDescription = null,
+                                IconTile(
+                                    icon = Icons.Default.CloudDone,
                                     tint = if (cloudStatus.syncState == CloudSyncState.SYNCED) {
                                         TimerHealthyDark
                                     } else {
                                         MaterialTheme.colorScheme.secondary
-                                    }
+                                    },
+                                    size = 42.dp,
+                                    iconSize = 22.dp
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("Backup & Sync Status", style = MaterialTheme.typography.titleMedium)
+                                    Text("Backup & Sync Status", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         text = cloudStatus.statusDetail,
                                         style = MaterialTheme.typography.bodySmall,
@@ -373,8 +400,9 @@ fun CloudBackupScreen(
 
                             val remote = cloudStatus.remoteVault
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
@@ -419,8 +447,14 @@ fun CloudBackupScreen(
                             }
 
                             ListItem(
-                                headlineContent = { Text("Automatic Encrypted Backup") },
+                                headlineContent = { Text("Automatic Encrypted Backup", fontWeight = FontWeight.Medium) },
                                 supportingContent = { Text("Automatically upload encrypted changes after adding, editing, or deleting accounts") },
+                                leadingContent = {
+                                    IconTile(
+                                        icon = Icons.Default.CloudSync,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
                                 trailingContent = {
                                     Switch(
                                         checked = settings.autoCloudBackupEnabled,
@@ -536,23 +570,28 @@ fun CloudBackupScreen(
 
                 // 4. Recovery Instructions & Zero-Knowledge Warning Card
                 Card(
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
                     ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                    border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.padding(18.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Text("How Zero-Knowledge Recovery Works", style = MaterialTheme.typography.titleMedium)
+                            IconTile(
+                                icon = Icons.Default.Shield,
+                                tint = MaterialTheme.colorScheme.primary,
+                                size = 38.dp,
+                                iconSize = 20.dp
+                            )
+                            Text("How Zero-Knowledge Recovery Works", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         }
                         Text(
                             text = "1. Zayaan Authenticator generates a random 256-bit vault encryption key on your device.\n" +
@@ -563,8 +602,9 @@ fun CloudBackupScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.38f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(

@@ -12,6 +12,7 @@ import com.example.data.local.EncryptedAccountDao
 import com.example.data.local.EncryptedAccountEntity
 import com.example.data.local.StoredVaultMetadata
 import com.example.data.local.VaultPreferencesStore
+import com.example.data.model.AccountSortMode
 import com.example.data.model.AppThemeMode
 import com.example.data.model.AuthenticatorAccount
 import com.example.data.model.AutoLockTimeout
@@ -219,6 +220,12 @@ class VaultRepository(
     suspend fun setThemeMode(mode: AppThemeMode) = preferencesStore.setThemeMode(mode)
     suspend fun setAutoCloudBackupEnabled(enabled: Boolean) =
         preferencesStore.setAutoCloudBackupEnabled(enabled)
+    suspend fun setPrivacyMaskCodesEnabled(enabled: Boolean) =
+        preferencesStore.setPrivacyMaskCodesEnabled(enabled)
+    suspend fun setShowNextCodePreview(enabled: Boolean) =
+        preferencesStore.setShowNextCodePreview(enabled)
+    suspend fun setAccountSortMode(mode: AccountSortMode) =
+        preferencesStore.setAccountSortMode(mode)
 
     // --- Zero-Knowledge Cloud Backup, Sync & Recovery ---
 

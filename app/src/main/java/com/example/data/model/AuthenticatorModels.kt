@@ -44,6 +44,7 @@ data class AuthenticatorAccount(
     val digits: Int = 6,
     val periodSeconds: Int = 30,
     val category: AccountCategory = AccountCategory.GENERAL,
+    val isPinned: Boolean = false,
     val sortOrder: Int = 0,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
     val updatedAtEpochMs: Long = System.currentTimeMillis(),
@@ -54,6 +55,17 @@ data class AuthenticatorAccount(
 
     val displaySubtitle: String
         get() = if (issuer.isNotBlank() && accountName.isNotBlank()) accountName else ""
+}
+
+enum class AccountSortMode(val displayName: String) {
+    CUSTOM("Custom Order"),
+    NAME_ASC("Name (A–Z)"),
+    RECENT("Recently Added");
+
+    companion object {
+        fun fromRaw(raw: String?): AccountSortMode =
+            entries.firstOrNull { it.name == raw } ?: CUSTOM
+    }
 }
 
 enum class AppThemeMode(val displayName: String) {
@@ -87,7 +99,10 @@ data class SecuritySettings(
     val screenshotProtectionEnabled: Boolean = true,
     val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val autoCloudBackupEnabled: Boolean = true,
-    val recoveryPasswordConfigured: Boolean = false
+    val recoveryPasswordConfigured: Boolean = false,
+    val privacyMaskCodesEnabled: Boolean = false,
+    val showNextCodePreview: Boolean = true,
+    val sortMode: AccountSortMode = AccountSortMode.CUSTOM
 )
 
 enum class CloudSyncState {

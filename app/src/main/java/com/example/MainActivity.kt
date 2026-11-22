@@ -42,6 +42,7 @@ import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.LockScreen
 import com.example.ui.screens.QrScannerScreen
 import com.example.ui.screens.SecuritySettingsScreen
+import com.example.ui.screens.TransferAccountsScreen
 import com.example.ui.theme.ZayanAuthenticatorTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +55,7 @@ object Routes {
     const val EDIT_ACCOUNT = "edit_account/{accountId}"
     const val SECURITY_SETTINGS = "security_settings"
     const val CLOUD_BACKUP = "cloud_backup"
+    const val TRANSFER_ACCOUNTS = "transfer_accounts"
 
     fun editAccount(accountId: String) = "edit_account/$accountId"
 }
@@ -239,7 +241,10 @@ fun ZayanAuthenticatorApp(
                         snackbarHostState = snackbarHostState,
                         onSearchQueryChange = viewModel::setSearchQuery,
                         onSelectCategory = viewModel::setSelectedCategory,
+                        onSelectSortMode = viewModel::setAccountSortMode,
+                        onTogglePrivacyMask = viewModel::setPrivacyMaskCodesEnabled,
                         onToggleReorderMode = viewModel::toggleReorderMode,
+                        onTogglePinAccount = viewModel::togglePinAccount,
                         onMoveAccount = viewModel::moveAccount,
                         onCopyCode = { account, _ ->
                             viewModel.notifyMessage("Copied ${account.displayTitle} code")
@@ -247,6 +252,7 @@ fun ZayanAuthenticatorApp(
                         onOpenQrScanner = { navController.navigate(Routes.QR_SCANNER) },
                         onImportQrFromPhoto = { launchPhotoPickerForQr() },
                         onOpenManualEntry = { navController.navigate(Routes.MANUAL_ENTRY) },
+                        onOpenTransferAccounts = { navController.navigate(Routes.TRANSFER_ACCOUNTS) },
                         onEditAccount = { account ->
                             navController.navigate(Routes.editAccount(account.id))
                         },
@@ -336,8 +342,21 @@ fun ZayanAuthenticatorApp(
                         onToggleBiometric = viewModel::setBiometricEnabled,
                         onSelectAutoLockTimeout = viewModel::setAutoLockTimeout,
                         onToggleScreenshotProtection = viewModel::setScreenshotProtectionEnabled,
+                        onTogglePrivacyMask = viewModel::setPrivacyMaskCodesEnabled,
+                        onToggleNextCodePreview = viewModel::setShowNextCodePreview,
+                        onSelectSortMode = viewModel::setAccountSortMode,
                         onSelectThemeMode = viewModel::setThemeMode,
                         onOpenCloudBackup = { navController.navigate(Routes.CLOUD_BACKUP) },
+                        onOpenTransferAccounts = { navController.navigate(Routes.TRANSFER_ACCOUNTS) },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Routes.TRANSFER_ACCOUNTS) {
+                    TransferAccountsScreen(
+                        accounts = allAccounts,
+                        onScanExportQr = { navController.navigate(Routes.QR_SCANNER) },
+                        onImportExportQrImage = { launchPhotoPickerForQr() },
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
